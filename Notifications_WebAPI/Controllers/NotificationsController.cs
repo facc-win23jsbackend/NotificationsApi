@@ -61,7 +61,9 @@ public class NotificationsController : ControllerBase
             return NotFound($"No notification with email address: {email}, was found.");
         }
 
+        // Uppdaterar både e-post och prenumerationsstatus
         notification.Email = updatedNotification.Email;
+        notification.IsActive = updatedNotification.IsActive; // Uppdaterar status
 
         try
         {
@@ -80,8 +82,8 @@ public class NotificationsController : ControllerBase
         }
 
         return NoContent();
-
     }
+
 
 
 
