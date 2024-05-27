@@ -1,37 +1,53 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Notifications_WebAPI.Contexts;
 using Notifications_WebAPI.Entities;
+using System.Security.Claims;
 
 namespace Notifications_WebAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class NotificationsController : ControllerBase
 {
     private readonly NotificationContext _context;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public NotificationsController(NotificationContext context)
+    public NotificationsController(NotificationContext context, IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
+        _httpContextAccessor = httpContextAccessor;
     }
 
 
 
-    [HttpPost] // CREATE - Skapar en notifikation
+    [HttpPost] // CREATE - Skapar en Notification
     public async Task<ActionResult<NotificationEntity>> CreateNotification([FromBody] NotificationEntity notification)
     {
+        var userId =
+            _httpContextAccessor?.HttpContext?.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier);
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+        // Kontrollerar om e-postadressen redan finns i databasen
         if (_context.Notifications.Any(x => x.Email == notification.Email))
         {
-            return BadRequest("This email address is already subscribed");
+            return BadRequest("This Email address is already taken, please use another email. ");
         }
+
+        notification.UserId = userId.Value;
 
         _context.Notifications.Add(notification);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetOne), new { email = notification.Email }, notification);
+        return CreatedAtAction(nameof(GetNotificationByUserId), new { id = notification.Id }, notification);
     }
+
 
 
 
@@ -40,6 +56,30 @@ public class NotificationsController : ControllerBase
     {
         return await _context.Notifications.ToListAsync();
     }
+
+
+
+
+    [HttpGet("user")] // READ - Hämtar en Customer med ett UserId
+    public async Task<ActionResult<NotificationEntity>> GetNotificationByUserId()
+    {
+        var userId =
+            _httpContextAccessor?.HttpContext?.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier);
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+        var notification = await _context.Notifications.FirstOrDefaultAsync(x => x.UserId == userId.Value);
+        if (notification == null)
+        {
+            return NotFound();
+        }
+
+        return notification;
+    }
+
+
 
 
 
