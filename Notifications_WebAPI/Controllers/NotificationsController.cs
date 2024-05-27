@@ -10,7 +10,7 @@ namespace Notifications_WebAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
+
 public class NotificationsController : ControllerBase
 {
     private readonly NotificationContext _context;
@@ -92,26 +92,26 @@ public class NotificationsController : ControllerBase
 
 
 
-    [HttpPut("{email}")] // UPDATE - Uppdaterar en Notifikation entitet med email
-    public async Task<IActionResult> UpdateOne(string email, [FromBody] NotificationEntity updatedNotification)
+    [HttpPut("{userId}")]
+    public async Task<IActionResult> UpdateOne(string userId, [FromBody] NotificationEntity updatedNotification)
     {
-        var notification = await _context.Notifications.FirstOrDefaultAsync(x => x.Email == email);
+        var notification = await _context.Notifications.FirstOrDefaultAsync(x => x.UserId == userId);
         if (notification == null)
         {
-            return NotFound($"No notification with email address: {email}, was found.");
+            return NotFound($"No notification with UserId: {userId} was found.");
         }
 
-        // Uppdaterar både e-post och prenumerationsstatus
         notification.Email = updatedNotification.Email;
-        notification.IsActive = updatedNotification.IsActive; // Uppdaterar status
+        notification.IsActive = updatedNotification.IsActive;
 
         try
         {
             await _context.SaveChangesAsync();
+            return NoContent();
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!_context.Notifications.Any(x => x.Email == email))
+            if (!_context.Notifications.Any(x => x.UserId == userId))
             {
                 return NotFound();
             }
@@ -120,9 +120,8 @@ public class NotificationsController : ControllerBase
                 throw;
             }
         }
-
-        return NoContent();
     }
+
 
 
 
